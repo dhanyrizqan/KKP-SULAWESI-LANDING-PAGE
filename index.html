@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP-KKD Sulawesi</title>
+    
+    <!-- 1. Tailwind CSS (Untuk Desain) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. Font & Icon -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- 3. Konfigurasi Desain -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-nav { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); }
+        
+        /* Animasi Blob Background */
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob 7s infinite; }
+        .animation-delay-2000 { animation-delay: 2s; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 selection:bg-blue-100">
+
+    <!-- CONTAINER UTAMA APLIKASI -->
+    <div id="app"></div>
+
+    <!-- SCRIPT LOGIKA APLIKASI (JAVASCRIPT) -->
+    <script>
+        // --- 1. DATA AWAL (DATABASE SEMENTARA) ---
+        let state = {
+            view: 'home', // Opsi: 'home', 'login', 'dashboard'
+            isLoggedIn: false,
+            currentUser: null,
+            mobileMenuOpen: false,
+            // Data Provinsi
+            provinces: [
+                { id: 1, name: 'Sulawesi Selatan', description: 'Pusat konservasi terumbu karang di Kepulauan Spermonde dan Takabonerate.', active: true },
+                { id: 2, name: 'Sulawesi Utara', description: 'Terkenal dengan Taman Nasional Bunaken dan keanekaragaman hayati laut Lembeh.', active: true },
+                { id: 3, name: 'Gorontalo', description: 'Habitat Hiu Paus dan konservasi pesisir Teluk Tomini yang terjaga.', active: true },
+                { id: 4, name: 'Sulawesi Barat', description: 'Pengembangan kawasan konservasi penyu dan ekosistem mangrove di pesisir Majene.', active: true },
+                { id: 5, name: 'Sulawesi Tengah', description: 'Kawasan Kepulauan Togean yang menjadi jantung segitiga karang dunia.', active: true },
+                { id: 6, name: 'Sulawesi Tenggara', description: 'Surga bawah laut Wakatobi dengan ratusan spesies karang langka.', active: true },
+            ],
+            // Data Galeri
+            gallery: [
+                { id: 101, url: 'https://images.unsplash.com/photo-1582967788606-a171f1080ca8?auto=format&fit=crop&q=80&w=800', locationId: 2, date: '2023-10-15', caption: 'Patroli Rutin Bunaken' },
+                { id: 102, url: 'https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?auto=format&fit=crop&q=80&w=800', locationId: 6, date: '2023-11-02', caption: 'Terumbu Karang Wakatobi' },
+                { id: 103, url: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=800', locationId: 1, date: '2023-12-10', caption: 'Penyelaman Takabonerate' },
+            ],
+            // State untuk Dashboard
+            dashboardTab: 'locations', // 'locations' atau 'gallery'
+            editingId: null,
+            tempDesc: '',
+            showAddModal: false
+        };
+
+        // --- 2. FUNGSI RENDER UTAMA ---
+        // Fungsi ini menghapus layar dan menggambar ulang sesuai state saat ini
+        function render() {
+            const app = document.getElementById('app');
+            app.innerHTML = `
+                ${renderNavbar()}
+                <main class="pt-16 min-h-screen">
+                    ${state.view === 'home' ? renderHome() : ''}
+                    ${state.view === 'login' ? renderLogin() : ''}
+                    ${state.view === 'dashboard' ? renderDashboard() : ''}
+                </main>
+                ${renderFooter()}
+                ${state.showAddModal ? renderAddModal() : ''}
+            `;
+            
+            // Inisialisasi Icon Lucide setelah render
+            lucide.createIcons();
+        }
+
+        // --- 3. KOMPONEN-KOMPONEN UI (HTML TEMPLATES) ---
+
+        function renderNavbar() {
+            return `
+            <nav class="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-slate-200/60">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex justify-between items-center h-16">
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="navigate('home')">
+                            <div class="bg-[#003366] p-1.5 rounded-lg">
+                                <i data-lucide="anchor" class="w-5 h-5 text-white"></i>
+                            </div>
+                            <span class="font-semibold text-xl tracking-tight text-[#003366]">SIP-KKD Sulawesi</span>
+                        </div>
+                        
+                        <!-- Desktop Menu -->
+                        <div class="hidden md:flex items-center space-x-8">
+                            <button onclick="navigate('home')" class="text-sm font-medium ${state.view === 'home' ? 'text-[#003366]' : 'text-slate-500 hover:text-[#003366]'}">Beranda</button>
+                            <a href="#lokasi" onclick="navigate('home')" class="text-sm font-medium text-slate-500 hover:text-[#003366]">Lokasi</a>
+                            <a href="#galeri" onclick="navigate('home')" class="text-sm font-medium text-slate-500 hover:text-[#003366]">Galeri</a>
+                            
+                            ${state.isLoggedIn ? 
+                                `<button onclick="navigate('dashboard')" class="px-4 py-2 text-sm font-medium text-white bg-[#003366] rounded-full hover:bg-blue-900 shadow-lg shadow-blue-900/20">Dashboard</button>` : 
+                                `<button onclick="navigate('login')" class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#003366] bg-blue-50 hover:bg-blue-100 rounded-full">
+                                    <i data-lucide="user" class="w-4 h-4"></i> Login Admin
+                                </button>`
+                            }
+                        </div>
+                    </div>
+                </div>
+            </nav>
+            `;
+        }
+
+        function renderHome() {
+            return `
+            <!-- HERO SECTION -->
+            <section class="relative overflow-hidden bg-gradient-to-b from-blue-50 to-white py-20 lg:py-32">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 text-center relative z-10">
+                    <span class="inline-block px-4 py-1.5 mb-6 text-xs font-semibold tracking-wider text-blue-700 uppercase bg-blue-100/50 rounded-full">Portal Resmi KKP Wilayah Sulawesi</span>
+                    <h1 class="text-4xl md:text-6xl font-bold tracking-tight text-slate-900 mb-6">
+                        Menjaga Laut, <br /><span class="text-[#003366]">Melestarikan Kehidupan.</span>
+                    </h1>
+                    <p class="max-w-2xl mx-auto text-lg text-slate-600 mb-10 leading-relaxed">
+                        Pantau dan jelajahi 6 kawasan konservasi daerah di Sulawesi secara real-time. Transparansi data untuk pengelolaan laut yang lebih baik.
+                    </p>
+                    <div class="flex justify-center gap-4">
+                        <a href="#lokasi" class="px-8 py-3.5 text-sm font-semibold text-white bg-[#003366] rounded-full hover:bg-blue-900 shadow-lg shadow-blue-900/20">Lihat Kawasan</a>
+                    </div>
+                </div>
+                <!-- Blob Backgrounds -->
+                <div class="absolute top-1/2 left-10 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
+                <div class="absolute top-1/2 right-10 w-64 h-64 bg-cyan-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
+            </section>
+
+            <!-- LOKASI -->
+            <section id="lokasi" class="py-20 max-w-7xl mx-auto px-4 sm:px-6">
+                <h2 class="text-3xl font-bold text-slate-900 mb-2">Wilayah Konservasi</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+                    ${state.provinces.map(prov => `
+                        <div class="group bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="bg-blue-50 p-3 rounded-xl text-[#003366]"><i data-lucide="map-pin"></i></div>
+                                <span class="bg-green-100 text-green-700 text-xs font-medium px-2.5 py-1 rounded-full">Aktif</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-slate-900 mb-2">${prov.name}</h3>
+                            <p class="text-slate-500 text-sm leading-relaxed mb-4">${prov.description}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            </section>
+
+            <!-- GALERI -->
+            <section id="galeri" class="py-20 bg-slate-50 border-t border-slate-200">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6">
+                    <h2 class="text-3xl font-bold text-slate-900 mb-12 text-center">Dokumentasi Lapangan</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        ${state.gallery.map(item => `
+                            <div class="relative overflow-hidden rounded-2xl shadow-lg group aspect-[4/3]">
+                                <img src="${item.url}" class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-700">
+                                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-6">
+                                    <p class="text-white font-medium text-lg">${item.caption}</p>
+                                    <div class="flex items-center gap-2 text-white/80 text-xs mt-1">
+                                        <i data-lucide="calendar" class="w-3 h-3"></i> <span>${item.date}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </section>
+            `;
+        }
+
+        function renderLogin() {
+            return `
+            <div class="min-h-[80vh] flex flex-col items-center justify-center px-4 bg-slate-50">
+                <div class="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
+                    <div class="text-center mb-8">
+                        <div class="bg-blue-50 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#003366]">
+                            <i data-lucide="lock" class="w-8 h-8"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-slate-900">Admin Login</h2>
+                    </div>
+                    <form onsubmit="handleLogin(event)" class="space-y-5">
+                        <input type="text" id="username" placeholder="Username (admin)" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#003366] outline-none" required>
+                        <input type="password" id="password" placeholder="Password (admin123)" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#003366] outline-none" required>
+                        <button type="submit" class="w-full bg-[#003366] text-white py-2.5 rounded-lg font-semibold hover:bg-blue-900">Masuk Dashboard</button>
+                    </form>
+                    <button onclick="navigate('home')" class="w-full mt-4 text-sm text-slate-500 hover:text-[#003366]">&larr; Kembali</button>
+                </div>
+            </div>
+            `;
+        }
+
+        function renderDashboard() {
+            return `
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+                <div class="flex justify-between items-center mb-8">
+                    <h1 class="text-2xl font-bold text-slate-900">Dashboard Admin</h1>
+                    <button onclick="handleLogout()" class="text-red-600 bg-red-50 px-4 py-2 rounded-lg text-sm hover:bg-red-100">Keluar</button>
+                </div>
+                
+                <!-- TABS -->
+                <div class="flex space-x-1 bg-slate-100 p-1 rounded-xl w-fit mb-8">
+                    <button onclick="switchTab('locations')" class="px-6 py-2 rounded-lg text-sm font-medium ${state.dashboardTab === 'locations' ? 'bg-white text-[#003366] shadow-sm' : 'text-slate-500'}">Data Lokasi</button>
+                    <button onclick="switchTab('gallery')" class="px-6 py-2 rounded-lg text-sm font-medium ${state.dashboardTab === 'gallery' ? 'bg-white text-[#003366] shadow-sm' : 'text-slate-500'}">Manajemen Galeri</button>
+                </div>
+
+                <!-- CONTENT LOKASI -->
+                ${state.dashboardTab === 'locations' ? `
+                    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 border-b">
+                                <tr>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Provinsi</th>
+                                    <th class="px-6 py-4 text-xs font-semibold text-slate-500 uppercase">Deskripsi</th>
+                                    <th class="px-6 py-4 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                ${state.provinces.map(prov => `
+                                    <tr class="hover:bg-slate-50/50">
+                                        <td class="px-6 py-4 font-medium">${prov.name}</td>
+                                        <td class="px-6 py-4 text-sm text-slate-600">
+                                            ${state.editingId === prov.id ? 
+                                                `<textarea id="desc-${prov.id}" class="w-full p-2 border rounded-lg" rows="3">${state.tempDesc}</textarea>` : 
+                                                prov.description
+                                            }
+                                        </td>
+                                        <td class="px-6 py-4 text-right">
+                                            ${state.editingId === prov.id ? 
+                                                `<button onclick="saveEdit(${prov.id})" class="text-green-600 bg-green-50 p-2 rounded-lg mr-2"><i data-lucide="save" class="w-4 h-4"></i></button>
+                                                 <button onclick="cancelEdit()" class="text-slate-500 bg-slate-100 p-2 rounded-lg"><i data-lucide="x" class="w-4 h-4"></i></button>` : 
+                                                `<button onclick="startEdit(${prov.id})" class="text-[#003366] font-medium text-sm flex items-center justify-end gap-1 ml-auto"><i data-lucide="edit-3" class="w-3 h-3"></i> Edit</button>`
+                                            }
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : ''}
+
+                <!-- CONTENT GALERI -->
+                ${state.dashboardTab === 'gallery' ? `
+                    <div class="flex justify-between mb-6">
+                        <h3 class="text-lg font-semibold">Daftar Foto</h3>
+                        <button onclick="toggleModal(true)" class="bg-[#003366] text-white px-4 py-2 rounded-full text-sm flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i> Tambah Foto</button>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+                        ${state.gallery.map(item => `
+                            <div class="group relative bg-white rounded-xl border overflow-hidden shadow-sm">
+                                <div class="aspect-video bg-slate-100"><img src="${item.url}" class="w-full h-full object-cover"></div>
+                                <div class="p-4">
+                                    <p class="font-medium text-sm truncate">${item.caption}</p>
+                                    <div class="flex justify-between items-center mt-2">
+                                        <span class="text-xs text-slate-400">${item.date}</span>
+                                        <button onclick="deletePhoto(${item.id})" class="text-red-500 p-1 hover:bg-red-50 rounded"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+            `;
+        }
+
+        function renderAddModal() {
+            return `
+            <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold">Upload Dokumentasi</h3>
+                        <button onclick="toggleModal(false)"><i data-lucide="x" class="w-5 h-5"></i></button>
+                    </div>
+                    <form onsubmit="handleAddPhoto(event)" class="space-y-4">
+                        <div>
+                            <label class="text-sm font-medium">URL Foto</label>
+                            <input type="url" id="newUrl" required class="w-full px-4 py-2 border rounded-lg mt-1">
+                        </div>
+                        <div>
+                            <label class="text-sm font-medium">Caption</label>
+                            <input type="text" id="newCaption" required class="w-full px-4 py-2 border rounded-lg mt-1">
+                        </div>
+                        <div class="flex justify-end gap-3 pt-2">
+                            <button type="button" onclick="toggleModal(false)" class="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Batal</button>
+                            <button type="submit" class="px-4 py-2 text-sm text-white bg-[#003366] rounded-lg">Simpan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            `;
+        }
+
+        function renderFooter() {
+            return `
+            <footer class="bg-white border-t border-slate-200 mt-20 py-12">
+                <div class="max-w-7xl mx-auto px-6 text-center text-slate-400 text-xs">
+                    © 2024 SIP-KKD Sulawesi. Dikembangkan oleh Tim IT KKP (Versi HTML).
+                </div>
+            </footer>
+            `;
+        }
+
+        // --- 4. LOGIKA APLIKASI (CONTROLLERS) ---
+
+        function navigate(viewName) {
+            state.view = viewName;
+            render();
+            window.scrollTo(0,0);
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const u = document.getElementById('username').value;
+            const p = document.getElementById('password').value;
+            
+            if(u === 'admin' && p === 'admin123') {
+                state.isLoggedIn = true;
+                state.currentUser = 'Admin KKP';
+                navigate('dashboard');
+            } else {
+                alert('Login Gagal! (Gunakan: admin / admin123)');
+            }
+        }
+
+        function handleLogout() {
+            state.isLoggedIn = false;
+            navigate('home');
+        }
+
+        function switchTab(tabName) {
+            state.dashboardTab = tabName;
+            render();
+        }
+
+        // CRUD Lokasi
+        function startEdit(id) {
+            const prov = state.provinces.find(p => p.id === id);
+            state.editingId = id;
+            state.tempDesc = prov.description;
+            render();
+        }
+
+        function cancelEdit() {
+            state.editingId = null;
+            state.tempDesc = '';
+            render();
+        }
+
+        function saveEdit(id) {
+            const newDesc = document.getElementById(`desc-${id}`).value;
+            state.provinces = state.provinces.map(p => p.id === id ? {...p, description: newDesc} : p);
+            state.editingId = null;
+            render();
+        }
+
+        // CRUD Galeri
+        function toggleModal(show) {
+            state.showAddModal = show;
+            render();
+        }
+
+        function handleAddPhoto(e) {
+            e.preventDefault();
+            const url = document.getElementById('newUrl').value;
+            const caption = document.getElementById('newCaption').value;
+            
+            state.gallery.unshift({
+                id: Date.now(),
+                url: url,
+                caption: caption,
+                date: new Date().toISOString().split('T')[0],
+                locationId: 1
+            });
+            toggleModal(false);
+        }
+
+        function deletePhoto(id) {
+            if(confirm('Hapus foto ini?')) {
+                state.gallery = state.gallery.filter(p => p.id !== id);
+                render();
+            }
+        }
+
+        // --- 5. INITIALIZE ---
+        render(); // Jalankan render pertama kali
+
+    </script>
+</body>
+</html>
