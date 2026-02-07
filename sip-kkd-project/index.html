@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIP-KKD Sulawesi | Portal Konservasi</title>
+    
+    <!-- Libraries (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 text-slate-800 selection:bg-blue-100 min-h-screen flex flex-col">
+
+    <!-- CONTAINER UTAMA APLIKASI -->
+    <div id="app" class="flex-grow flex flex-col min-h-screen"></div>
+
+    <!-- LOAD SCRIPTS (URUTAN PENTING!) -->
+    <!-- 1. Konfigurasi & Helper -->
+    <script src="js/config.js"></script>
+    
+    <!-- 2. Layanan API -->
+    <script src="js/service.js"></script>
+    
+    <!-- 3. Data & State -->        
+    <script src="js/state.js"></script>
+    
+    <!-- 4. Tampilan (View) -->
+    <script src="js/view.js"></script>
+    
+    <!-- 5. Logika (Controller) -->
+    <script src="js/controller.js"></script>
+    
+    <!-- 6. Inisialisasi Aplikasi (Main) -->
+    <script src="js/app.js"></script>
+    
+</body>
+</html>
